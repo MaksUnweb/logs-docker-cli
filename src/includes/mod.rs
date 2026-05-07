@@ -22,11 +22,14 @@ impl fmt::Display for SelectLogs {
 }
 
 pub async fn connect_to_docker() -> Docker {
-   let docker = match Docker::connect_with_defaults() {
+    let docker = match Docker::connect_with_defaults() {
         Ok(docker) => { docker }
-        Err(_) => { panic!("Error connecting to Docker!") }
+        Err(_) => { 
+            eprintln!("Error connecting to Docker!");
+            std::process::exit(1);
+        }
    };
-   
+
    docker
 }
 
@@ -61,10 +64,15 @@ pub async fn connect_and_get_logs_follow(docker: &Docker, container_id: &String)
 
 pub async fn connect_and_get_logs(docker: &Docker, container_id: &String, options: LogsOptions) {
 
-    let logs: Vec<LogOutput> = docker.logs(&container_id, Some(options)) 
+    let logs: Vec<LogOutput> = match docker.logs(&container_id, Some(options)) 
         .try_collect()
-        .await 
-        .expect("Error getting logs!");
+        .await {
+            Ok(logs) => { logs }
+            Err(_) => { 
+                eprintln!("Error getting logs! Check Docker or container");
+                std::process::exit(1);
+            }
+        };
         
     for log in logs {
        println!("{}", SelectLogs(log));

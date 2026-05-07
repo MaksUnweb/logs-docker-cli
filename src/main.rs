@@ -39,7 +39,12 @@ async fn main() {
 
     match &args.mode {
         Actions::All => {
-            let _ = connect_and_get_logs_follow(&docker, &container_id).await.expect("Error get logs! Please check your CONTAINER ID or Docker!");
+             let _ = connect_and_get_logs_follow(&docker, &container_id)
+                 .await 
+                 .map_err(|e| {
+                    eprintln!("Error get logs: {} Please check your CONTAINER ID or Docker!", e);
+                    std::process::exit(1);
+                 });
         }
         Actions::Last15Min  => {
             let since = get_time_as_secs(15);
