@@ -1,26 +1,10 @@
 use bollard::{Docker, container::LogOutput, query_parameters::LogsOptions};
 use futures::{StreamExt, TryStreamExt};
-use std::{fmt::{self}, time::{SystemTime, UNIX_EPOCH}};
+use std::{time::{SystemTime, UNIX_EPOCH}};
+use colored::Colorize;
 
 
-struct SelectLogs(LogOutput);
-
-impl fmt::Display for SelectLogs {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            LogOutput::StdOut { message } => {
-                let text = String::from_utf8_lossy(&message);
-                write!(f, "{}", text)
-            }
-            LogOutput::StdErr { message } => {
-                let text = String::from_utf8_lossy(&message);
-                write!(f, "{}", text)
-            }
-            _ => { write!(f, "") }
-        }
-    }
-}
-
+//Function for connectiong to docker:
 pub async fn connect_to_docker() -> Docker {
     let docker = match Docker::connect_with_defaults() {
         Ok(docker) => { docker }
@@ -33,6 +17,7 @@ pub async fn connect_to_docker() -> Docker {
    docker
 }
 
+//Function for output all logs in real time
 pub async fn connect_and_get_logs_follow(docker: &Docker, container_id: &String) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let options = LogsOptions {
         follow: true, 
@@ -52,8 +37,9 @@ pub async fn connect_and_get_logs_follow(docker: &Docker, container_id: &String)
              println!("{:?}", message);
          }
          Ok(LogOutput::StdErr { message }) => {
+             let message = String::from_utf8_lossy(&message).to_string();
              println!("\n");
-             println!("{:?}", message);
+             println!("{}", message.red());
          }
          _ => {}
          }
@@ -62,6 +48,7 @@ pub async fn connect_and_get_logs_follow(docker: &Docker, container_id: &String)
     Ok(())
 }
 
+//Function for output with time:
 pub async fn connect_and_get_logs(docker: &Docker, container_id: &String, options: LogsOptions) {
 
     let logs: Vec<LogOutput> = match docker.logs(&container_id, Some(options)) 
@@ -75,10 +62,21 @@ pub async fn connect_and_get_logs(docker: &Docker, container_id: &String, option
         };
         
     for log in logs {
-       println!("{}", SelectLogs(log));
+        match log {
+            LogOutput::StdOut { message } => {
+                let message = String::from_utf8_lossy(&message).to_string();
+                println!("{}", message);
+            }
+            LogOutput::StdErr { message } => {
+                let message = String::from_utf8_lossy(&message).to_string();
+                println!("{}", message.red());
+            }
+            _ => {}
+        }
     }
 }
 
+//Function for creating unique options:
 pub fn create_log_options(since: i32) -> LogsOptions {
     let options = LogsOptions {
         follow: false, 
@@ -92,6 +90,7 @@ pub fn create_log_options(since: i32) -> LogsOptions {
     options
 }
 
+//Function for calculating time:
 pub fn get_time_as_secs(need_time: i32) -> i32 {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
